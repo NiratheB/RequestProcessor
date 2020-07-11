@@ -14,3 +14,6 @@ class HourlyStats(models.Model):
 
     class Meta:
         unique_together = ('customer_id', 'datetime')
+
+
+## TODO : Add Blacklists
