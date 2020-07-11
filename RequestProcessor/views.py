@@ -2,14 +2,16 @@ import json
 
 from django.http import HttpResponse
 
-expected_fields = set(["customerID", "tagID", "userID", "remoteIP", "timestamp"])
+from RequestProcessor.models import Customer
+
+expected_fields = {"customerID", "tagID", "userID", "remoteIP", "timestamp"}
 
 
 def process_valid(request):
     pass
 
 
-def validate(data):
+def validate_json(data):
     # is valid json
     try:
         # is valid json
@@ -24,12 +26,20 @@ def validate(data):
         return False
 
 
+def validate_customer(customerId):
+    # check if customer id in table is active
+    return Customer.objects.filter(id=customerId, active=True).exists()
+
+
 def process(request):
     if request.method == 'POST':
-        if validate(request.body):
-            process_valid(request)
-            return HttpResponse("Valid Request")
+        if validate_json(request.body):
+            if validate_customer(request.body['customerId']):
+                process_valid(request)
+                return HttpResponse("Valid Request")
+            else:
+                return HttpResponse("CustomerId invalid")
         else:
-            return HttpResponse("Invalid Request")
+            return HttpResponse("Invalid Json in Request")
     else:
         return HttpResponse('Hello World!')
