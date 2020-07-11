@@ -5,9 +5,9 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
+    atomic = True
     dependencies = [
-        ('RequestProcessor', '0001_initial'),
+        ('RequestProcessor', '0002_insertdata'),
     ]
 
     operations = [
@@ -15,13 +15,14 @@ class Migration(migrations.Migration):
             name='HourlyStats',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('datetime', models.DateTimeField()),
+                ('date', models.DateField()),
+                ('hour', models.IntegerField()),
                 ('request_count', models.BigIntegerField(default=0)),
                 ('invalid_count', models.BigIntegerField(default=0)),
-                ('customer_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='RequestProcessor.Customer')),
+                ('customer', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='RequestProcessor.Customer')),
             ],
             options={
-                'unique_together': {('customer_id', 'datetime')},
+                'unique_together': {('customer', 'date', 'hour')},
             },
         ),
     ]

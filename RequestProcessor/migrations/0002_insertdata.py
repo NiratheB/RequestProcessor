@@ -19,7 +19,7 @@ def insertdata(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('RequestProcessor', '0002_hourlystats'),
+        ('RequestProcessor', '0001_initial'),
     ]
 
     operations = [
