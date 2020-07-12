@@ -26,7 +26,7 @@ SECRET_KEY = 'p=2__ww-3wb7og)nqnijrdo6i%zbubt^5hs)q^fft_lwv413)!'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['0.0.0.0']
 
 
 # Application definition
@@ -82,8 +82,8 @@ DATABASES = {
         'NAME': 'request_processor',
         'USER': user,
         'PASSWORD': password,
-        'HOST': '',
-        'PORT': '',
+        'HOST': 'db',
+        'PORT': '3306',
     }
 }
 
