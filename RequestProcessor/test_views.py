@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from RequestProcessor.views import validate_json, validate_customer
+from RequestProcessor.views import validate_json, validate_customer, \
+    validate_ip, validate_ua
 
 
 class Test(TestCase):
@@ -33,3 +34,15 @@ class Test(TestCase):
         customerId = '3300'
         customer, isvalid = validate_customer(customerId)
         self.assertFalse(isvalid)
+
+    def test_blacklisted_ip(self):
+        self.assertFalse(validate_ip("123.234.56.78"))
+
+    def test_nonblacklisted_ip(self):
+         self.assertTrue(validate_ip("127.0.0.1"))
+
+    def test_blacklisted_ua(self):
+        self.assertFalse(validate_ua('Googlebot'))
+
+    def test_nonblacklisted_ua(self):
+        self.assertTrue(validate_ua('Localhost'))

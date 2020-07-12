@@ -5,9 +5,15 @@ from json.decoder import JSONDecodeError
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 
-from RequestProcessor.models import Customer, HourlyStats
+from RequestProcessor.models import Customer, HourlyStats, IPBlacklist, \
+    UABlacklist
 
-expected_fields = {"customerID", "tagID", "userID", "remoteIP", "timestamp"}
+CUSTOMERID = "customerID"
+TAGID = "tagID"
+USERID = "userID"
+REMOTEIP = "remoteIP"
+TIMESTAMP = "timestamp"
+expected_fields = {CUSTOMERID, TAGID, USERID, REMOTEIP, TIMESTAMP}
 
 
 def process_valid(request):
@@ -19,6 +25,7 @@ def validate_json(data):
     try:
         # is valid json
         json_data = json.loads(data)
+
         # check for missing field
         if not expected_fields.issubset(json_data.keys()):
             # missing expected fields
@@ -38,22 +45,27 @@ def validate_customer(customerId):
         return None, False
 
 
+def validate_ip(remoteIP):
+    return not IPBlacklist.objects.filter(ip=remoteIP).exists()
+
+
+def validate_ua(useragent):
+    return not UABlacklist.objects.filter(ua=useragent).exists()
+
+
 def get_customer_id(data):
-    if 'customerID' in data:
-        return data['customerID']
+    if CUSTOMERID in data:
+        return data[CUSTOMERID]
     else:
         return -1
 
 
 def get_timestamp(data):
-    if 'timestamp' in data:
-        try:
-            value = datetime.fromtimestamp(float(data['timestamp']))
-            return value, True
-        except ValueError:
-            # Error in timestamp
-            return datetime.now(), False
-    else:
+    try:
+        value = datetime.fromtimestamp(float(data[TIMESTAMP]))
+        return value, True
+    except (KeyError, ValueError):
+        # Error in timestamp
         return datetime.now(), False
 
 
@@ -79,6 +91,15 @@ def process(request):
             if not isvalid:
                 message += "Invalid Timestamp!\n"
             valid = valid and isvalid
+
+            if valid:
+                # validate ip
+                if not validate_ip(request_data[REMOTEIP]):
+                    valid = False
+                    message += "Blacklisted IP\n"
+                elif not validate_ua(request_data[USERID]): # validate ua
+                    valid = False
+                    message += "Blacklisted User Agent\n"
 
         stat = HourlyStats.create(customer=customer,
                                       req_datetime=time,

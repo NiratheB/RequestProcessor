@@ -1,7 +1,9 @@
 from datetime import datetime
 
 from django.db import models
+from django.db.models import GenericIPAddressField, CharField
 from django.utils.timezone import now
+
 
 class Customer(models.Model):
     name = models.CharField(max_length=255, null=False)
@@ -36,4 +38,9 @@ class HourlyStats(models.Model):
         unique_together = ('customer', 'date', 'hour')
 
 
-## TODO : Add Blacklists
+class IPBlacklist(models.Model):
+    ip = GenericIPAddressField(null=False, unique=True)
+
+
+class UABlacklist(models.Model):
+    ua = CharField(max_length=255, null=False, unique=True)
