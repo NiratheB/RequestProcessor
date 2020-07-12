@@ -10,7 +10,7 @@ class Test(TestCase):
         json, isvalid = validate_json(data)
         self.assertFalse(isvalid)
 
-    def test_validate_valid(self):
+    def test_validate_validjson(self):
         data = '{"customerID":1,"tagID":2,"userID":"aaaaaaaa-bbbb-cccc-1111-222222222222","remoteIP":"123.234.56.78","timestamp":1500000000}'
         json, isvalid = validate_json(data)
         self.assertTrue(isvalid)

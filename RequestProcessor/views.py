@@ -76,10 +76,14 @@ def process(request):
     message = ""
     customer = None
     time = datetime.now()
+
     if request.method == 'POST':
+        # validate json
         request_data, valid = validate_json(request.body)
         if not valid:
             message += "Invalid JSON!\n"
+
+        # derive the customer id and timestamp
         if request_data:
             # validate customer
             customerid = get_customer_id(request_data)
@@ -103,6 +107,7 @@ def process(request):
                     valid = False
                     message += "Blacklisted User Agent\n"
 
+        # add to stat table
         stat = HourlyStats.create(customer=customer,
                                       req_datetime=time,
                                       isvalid=valid)
@@ -118,31 +123,35 @@ def process(request):
 
 
 def get_statistics(customerid, date):
-    # Get total requests on that day
+    # Get data for the date
     stat_by_date = HourlyStats.objects.filter(date=date)
-    total_reqs_by_date = stat_by_date.values('date').\
-        annotate(total_req = Coalesce(Sum('request_count') +
-                           Sum('invalid_count'), 0))
-    if total_reqs_by_date:
-        total_reqs = total_reqs_by_date[0]['total_req']
 
-        # get requests by the customer
-        req_by_customer = stat_by_date.filter(customer_id=customerid)
-        total_customer_reqs = req_by_customer.values('date').order_by('hour').annotate(totalvalids= Coalesce(Sum('request_count'),0),
-                                                               totalinvalids = Coalesce(Sum('invalid_count'),0)).first()
-        stat = {
-            'total_requests': total_reqs,
-            'total_requests_by_customer': {
-                'valid': total_customer_reqs['totalvalids'],
-                'invalid': total_customer_reqs['totalinvalids']
-            },
-            'stat_by_hour': list(req_by_customer.values('hour', 'request_count',
-                                                        'invalid_count'))
-        }
-    else:
-        stat = {
-            'total_requests': 0
-        }
+    # Get total requests on date
+    total_reqs = stat_by_date.aggregate(total_req=
+                                        Coalesce(Sum('request_count') +
+                                                 Sum('invalid_count'), 0)
+                                        )['total_req']
+
+    # get all requests by the customer
+    req_by_customer = stat_by_date.filter(customer_id=customerid).\
+        order_by('hour')
+
+    # sum valid and invalid requests by customer
+    total_customer_reqs = req_by_customer.\
+        aggregate(totalvalids=Coalesce(Sum('request_count'), 0),
+                  totalinvalids=Coalesce(Sum('invalid_count'), 0)
+                  )
+
+    # prepare output
+    stat = {
+        'total_requests_on_date': total_reqs,
+        'total_requests_by_customer': {
+            'valid': total_customer_reqs['totalvalids'],
+            'invalid': total_customer_reqs['totalinvalids']
+        },
+        'stat_by_hour': list(req_by_customer.values('hour', 'request_count',
+                                                    'invalid_count'))
+    }
     return stat
 
 
@@ -155,6 +164,8 @@ def get_date(date_data):
 
 
 def stat(request):
+    err_message = "Please send GET request to correct url " \
+                  "e.g. /stat/?id=12&date=12/12/2021"
     message = ""
     if request.GET:
         try:
@@ -166,8 +177,8 @@ def stat(request):
             message = json.dumps(get_statistics(customer_id, date))
 
         except (KeyError, ValueError):
-            message = "Please send GET request to correct url " \
-                      "e.g. stat/?id=1&date=31/12/2021"
+            message = err_message
     else:
-        message = "Please send a GET request. Eg. stat/?id=12&date=12/12/2021"
+        message = err_message
+
     return HttpResponse(message)
