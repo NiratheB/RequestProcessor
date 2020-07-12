@@ -25,13 +25,21 @@ class HourlyStats(models.Model):
         stat, existing = cls.objects.get_or_create(customer=customer,
                                          date=date,
                                          hour=hour)
-        # increment req count
-        stat.request_count = stat.request_count+1
         # if invalid increment invalid count
         if not isvalid:
             stat.invalid_count = stat.invalid_count+1
+        else:
+            # increment req count
+            stat.request_count = stat.request_count + 1
 
         return stat
+
+    def __str__(self):
+        return "Date: %s, Hour: %s, Customer: %s, Valid: %s, Invalid: %s" % (self.date,
+                                                                            self.hour,
+                                                                            self.customer_id,
+                                                                            self.request_count,
+                                                                            self.invalid_count)
 
 
     class Meta:

@@ -3,7 +3,9 @@ from datetime import datetime
 from json.decoder import JSONDecodeError
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
+from django.db.models import Sum
 
 from RequestProcessor.models import Customer, HourlyStats, IPBlacklist, \
     UABlacklist
@@ -112,4 +114,60 @@ def process(request):
     else:
         message = "Please send POST request"
 
+    return HttpResponse(message)
+
+
+def get_statistics(customerid, date):
+    # Get total requests on that day
+    stat_by_date = HourlyStats.objects.filter(date=date)
+    total_reqs_by_date = stat_by_date.values('date').\
+        annotate(total_req = Coalesce(Sum('request_count') +
+                           Sum('invalid_count'), 0))
+    if total_reqs_by_date:
+        total_reqs = total_reqs_by_date[0]['total_req']
+
+        # get requests by the customer
+        req_by_customer = stat_by_date.filter(customer_id=customerid)
+        total_customer_reqs = req_by_customer.values('date').order_by('hour').annotate(totalvalids= Coalesce(Sum('request_count'),0),
+                                                               totalinvalids = Coalesce(Sum('invalid_count'),0)).first()
+        stat = {
+            'total_requests': total_reqs,
+            'total_requests_by_customer': {
+                'valid': total_customer_reqs['totalvalids'],
+                'invalid': total_customer_reqs['totalinvalids']
+            },
+            'stat_by_hour': list(req_by_customer.values('hour', 'request_count',
+                                                        'invalid_count'))
+        }
+    else:
+        stat = {
+            'total_requests': 0
+        }
+    return stat
+
+
+def get_date(date_data):
+    try:
+        date = datetime.strptime(date_data, "%d/%m/%Y")
+        return date.date(), True
+    except ValueError:
+        return None, False
+
+
+def stat(request):
+    message = ""
+    if request.GET:
+        try:
+            customer_id = request.GET['id']
+            date, isvalid = get_date(request.GET['date'])
+            if not isvalid:
+                raise ValueError
+
+            message = json.dumps(get_statistics(customer_id, date))
+
+        except (KeyError, ValueError):
+            message = "Please send GET request to correct url " \
+                      "e.g. stat/?id=1&date=31/12/2021"
+    else:
+        message = "Please send a GET request. Eg. stat/?id=12&date=12/12/2021"
     return HttpResponse(message)
