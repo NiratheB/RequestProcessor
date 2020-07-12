@@ -6,6 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.db.models import Sum
+from django.views.decorators.csrf import csrf_exempt
 
 from RequestProcessor.models import Customer, HourlyStats, IPBlacklist, \
     UABlacklist
@@ -71,6 +72,7 @@ def get_timestamp(data):
         return datetime.now(), False
 
 
+@csrf_exempt
 def process(request):
     valid = True
     message = ""
